@@ -58,8 +58,10 @@ public sealed class WebsockifyMiddleware
         }
 
         var logger = context.RequestServices.GetRequiredService<ILogger<WebsockifyMiddleware>>();
+        var appLifetime = context.RequestServices.GetRequiredService<IHostApplicationLifetime>();
+
         // 使用链接的 CancellationTokenSource 来在任一方完成后取消所有操作
-        using var cts = CancellationTokenSource.CreateLinkedTokenSource(context.RequestAborted);
+        using var cts = CancellationTokenSource.CreateLinkedTokenSource(context.RequestAborted, appLifetime.ApplicationStopping);
 
         WebSocket? webSocket = null;
         Socket? socket = null;
