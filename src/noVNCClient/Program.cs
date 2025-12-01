@@ -9,6 +9,8 @@ namespace noVNCClient
         {
             var builder = WebApplication.CreateBuilder(args);
 
+            builder.Services.AddMemoryCache();
+
             // Add services to the container.
             builder.Services.AddControllersWithViews();
 
@@ -29,7 +31,7 @@ namespace noVNCClient
             app.MapStaticAssets();
             app.MapControllerRoute(
                 name: "default",
-                pattern: "{controller=Home}/{action=Index}/{id?}")
+                pattern: "{controller=VNC}/{action=Index}")
                 .WithStaticAssets();
 
             app.Run();

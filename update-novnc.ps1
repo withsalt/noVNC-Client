@@ -95,7 +95,7 @@ function Update-NoVNC {
         # ============================================
         # 步骤 1: 克隆noVNC仓库
         # ============================================
-        Write-ColorOutput "[步骤 1/4] 从GitHub拉取最新代码..." "Info"
+        Write-ColorOutput "[步骤 1/3] 从GitHub拉取最新代码..." "Info"
         
         # 如果临时目录已存在，先删除
         if (Test-Path $tempPath) {
@@ -126,32 +126,12 @@ function Update-NoVNC {
         # ============================================
         # 步骤 2: 复制文件到wwwroot
         # ============================================
-        Write-ColorOutput "[步骤 2/4] 复制文件到wwwroot目录..." "Info"
+        Write-ColorOutput "[步骤 2/3] 复制文件到wwwroot目录..." "Info"
         
         # 检查wwwroot目录
         if (-not (Test-Path $wwwrootPath)) {
             Write-ColorOutput "创建wwwroot目录..." "Warning"
             New-Item -ItemType Directory -Path $wwwrootPath -Force | Out-Null
-        }
-
-        # 备份当前wwwroot（可选）
-        $backupPath = Join-Path $rootPath "backup\wwwroot_$(Get-Date -Format 'yyyyMMdd_HHmmss')"
-        $backupDir = Join-Path $rootPath "backup"
-        
-        # 创建备份目录
-        if (-not (Test-Path $backupDir)) {
-            New-Item -ItemType Directory -Path $backupDir -Force | Out-Null
-        }
-        
-        Write-ColorOutput "备份当前wwwroot到: $backupPath" "Info"
-        if (Test-Path $wwwrootPath) {
-            try {
-                Copy-Item -Path $wwwrootPath -Destination $backupPath -Recurse -Force -ErrorAction Stop
-                Write-ColorOutput "✓ 备份完成" "Success"
-            }
-            catch {
-                Write-ColorOutput "⚠ 备份失败，但继续执行: $($_.Exception.Message)" "Warning"
-            }
         }
 
         # 清空wwwroot目录
@@ -187,64 +167,9 @@ function Update-NoVNC {
         Write-ColorOutput "✓ 已复制 $copiedFiles 个文件`n" "Success"
 
         # ============================================
-        # 步骤 3: 更新Razor视图文件
-        # ============================================
-        Write-ColorOutput "[步骤 3/4] 更新Razor视图文件..." "Info"
-        
-        # 检查源文件是否存在
-        $vncHtmlPath = Join-Path $wwwrootPath "vnc.html"
-        $vncLiteHtmlPath = Join-Path $wwwrootPath "vnc_lite.html"
-        
-        if (-not (Test-Path $vncHtmlPath)) {
-            throw "错误：vnc.html 文件不存在"
-        }
-        if (-not (Test-Path $vncLiteHtmlPath)) {
-            throw "错误：vnc_lite.html 文件不存在"
-        }
-
-        # 检查目标目录是否存在
-        if (-not (Test-Path $viewsPath)) {
-            throw "错误：Views\Home 目录不存在: $viewsPath"
-        }
-
-        # 定义目标文件路径
-        $indexCshtmlPath = Join-Path $viewsPath "Index.cshtml"
-        $liteCshtmlPath = Join-Path $viewsPath "Lite.cshtml"
-
-        # 复制vnc.html到Index.cshtml
-        Write-ColorOutput "处理 vnc.html -> Index.cshtml" "Info"
-        try {
-            $vncContent = Get-Content -Path $vncHtmlPath -Raw -Encoding UTF8
-            if ([string]::IsNullOrEmpty($vncContent)) {
-                throw "vnc.html 文件为空"
-            }
-            $vncContent = $vncContent -replace '@', '@@'
-            [System.IO.File]::WriteAllText($indexCshtmlPath, $vncContent, [System.Text.UTF8Encoding]::new($false))
-            Write-ColorOutput "✓ Index.cshtml 更新完成（替换了 $(@($vncContent.ToCharArray() | Where-Object { $_ -eq '@' }).Count) 个@符号）" "Success"
-        }
-        catch {
-            throw "处理 Index.cshtml 失败: $($_.Exception.Message)"
-        }
-
-        # 复制vnc_lite.html到Lite.cshtml
-        Write-ColorOutput "处理 vnc_lite.html -> Lite.cshtml" "Info"
-        try {
-            $liteContent = Get-Content -Path $vncLiteHtmlPath -Raw -Encoding UTF8
-            if ([string]::IsNullOrEmpty($liteContent)) {
-                throw "vnc_lite.html 文件为空"
-            }
-            $liteContent = $liteContent -replace '@', '@@'
-            [System.IO.File]::WriteAllText($liteCshtmlPath, $liteContent, [System.Text.UTF8Encoding]::new($false))
-            Write-ColorOutput "✓ Lite.cshtml 更新完成（替换了 $(@($liteContent.ToCharArray() | Where-Object { $_ -eq '@' }).Count) 个@符号）`n" "Success"
-        }
-        catch {
-            throw "处理 Lite.cshtml 失败: $($_.Exception.Message)"
-        }
-
-        # ============================================
         # 步骤 4: 清理临时文件
         # ============================================
-        Write-ColorOutput "[步骤 4/4] 清理临时文件..." "Info"
+        Write-ColorOutput "[步骤 3/3] 清理临时文件..." "Info"
         
         if (Test-Path $tempPath) {
             Remove-Item -Path $tempPath -Recurse -Force
@@ -257,12 +182,6 @@ function Update-NoVNC {
         Write-ColorOutput "========================================" "Success"
         Write-ColorOutput "✓ noVNC 更新完成！" "Success"
         Write-ColorOutput "========================================`n" "Success"
-        
-        Write-ColorOutput "更新摘要:" "Info"
-        Write-ColorOutput "- 已复制 $copiedFiles 个文件到 wwwroot" "Info"
-        Write-ColorOutput "- 已更新 Index.cshtml (@ -> @@)" "Info"
-        Write-ColorOutput "- 已更新 Lite.cshtml (@ -> @@)" "Info"
-        Write-ColorOutput "- 备份目录: $backupPath`n" "Info"
         
     }
     catch {
