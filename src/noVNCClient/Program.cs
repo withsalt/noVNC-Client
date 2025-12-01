@@ -12,14 +12,11 @@ namespace noVNCClient
             builder.Services.AddMemoryCache();
 
             // Add services to the container.
-            builder.Services.AddControllersWithViews();
+            builder.Services.AddControllers();
 
             var app = builder.Build();
 
-            app.UseHttpsRedirection();
             app.UseRouting();
-
-            app.UseAuthorization();
 
             // Read Websockify configuration from appsettings.json
             var websockifyOptions = new WebsockifyOptions();
