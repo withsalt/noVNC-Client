@@ -7,50 +7,55 @@
 
 ## 🚀 快速开始
 
-### 前置要求
+### 如何使用
 
-- [.NET 10.0 SDK](https://dotnet.microsoft.com/download/dotnet/10.0) 或更高版本
-- 一个运行中的 VNC 服务器
+1. **安装VNC服务端**  
+这里以TightVNC为例，安装过程不再赘述（建议以服务方式运行）  
+安装完成之后，按照下图勾选必要配置项目：
 
-### 安装步骤
+    ![TightVNC配置截图1](docs/images/screenshot_20251201143102.png)
 
-1. **克隆项目**
-```bash
-git clone https://github.com/yourusername/noVNC-Client.git
-cd noVNC-Client
-```
+    ![TightVNC配置截图2](docs/images/screenshot_20251201143116.png)
 
-2. **配置 VNC 服务器连接**
+    ![TightVNC配置截图3](docs/images/screenshot_20251201143150.png)
 
-编辑 `src/noVNCClient/appsettings.json` 文件：
+1. **下载vnc client**
+    ```bash
+    git clone https://github.com/yourusername/noVNC-Client.git
+    cd noVNC-Client
+    ```
 
-```json
-{
-  "Websockify": {
-    "Path": "/websockify",
-    "Host": "127.0.0.1",
-    "Port": 5900
-  }
-}
-```
+2. **配置 VNC 服务器连接（一般不用做任何更改）**
 
-参数说明：
-- `Path`: WebSocket 代理的路径（默认即可）
-- `Host`: VNC 服务器的 IP 地址或主机名
-- `Port`: VNC 服务器的端口号（默认 5900）
+    编辑 `src/noVNCClient/appsettings.json` 文件：
+
+    ```json
+    {
+    "Websockify": {
+        "Path": "/websockify",
+        "Host": "127.0.0.1",
+        "Port": 5900
+    }
+    }
+    ```
+
+    参数说明：
+    - `Path`: WebSocket 代理的路径（默认即可）
+    - `Host`: VNC 服务器的 IP 地址或主机名
+    - `Port`: VNC 服务器的端口号（默认 5900）
 
 3. **运行应用**
 
-```bash
-cd src/noVNCClient
-dotnet run
-```
+    ```bash
+    cd src/noVNCClient
+    dotnet run
+    ```
 
 4. **访问应用**
 
-打开浏览器访问：
-- 完整版界面: `https://localhost:5001/` 或 `https://localhost:5001/Index`
-- 精简版界面: `https://localhost:5001/Lite`
+    打开浏览器访问：
+    - 完整版界面: `https://localhost:5001/` 或 `https://localhost:5001/Index`
+    - 精简版界面: `https://localhost:5001/Lite`
 
 
 ## 📝 更新 noVNC 版本
