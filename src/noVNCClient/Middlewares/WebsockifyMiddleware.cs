@@ -1,4 +1,5 @@
-﻿using System.Net;
+﻿using System.Buffers;
+using System.Net;
 using System.Net.Sockets;
 using System.Net.WebSockets;
 
@@ -32,97 +33,14 @@ public sealed class WebsockifyMiddleware
         int tcpPort,
         int bufferSizeInBytes = RecommendedBufferSize)
     {
-        if (next == null)
-            throw new ArgumentNullException(nameof(next));
-        if (hostname == null)
-            throw new ArgumentNullException(nameof(hostname));
+        _next = next ?? throw new ArgumentNullException(nameof(next));
+        _hostname = hostname ?? throw new ArgumentNullException(nameof(hostname));
+
         if (tcpPort < IPEndPoint.MinPort || tcpPort > IPEndPoint.MaxPort)
             throw new ArgumentOutOfRangeException(nameof(tcpPort), tcpPort, "The TCP port number is invalid.");
-        if (bufferSizeInBytes < 1024)
-            bufferSizeInBytes = RecommendedBufferSize;
 
-        _next = next;
-        _hostname = hostname;
         _tcpPort = tcpPort;
-        _bufferSizeInBytes = bufferSizeInBytes;
-    }
-
-    private static async Task ReceiveTask(
-        NetworkStream networkStream, WebSocket webSocket, int bufferSize,
-        ILogger logger, CancellationToken cancellationToken)
-    {
-        var read = 0;
-        var buffer = new byte[bufferSize];
-
-        try
-        {
-            while (true)
-            {
-                read = await networkStream.ReadAsync(buffer, cancellationToken).ConfigureAwait(false);
-                await webSocket.SendAsync(
-                    new ArraySegment<byte>(buffer, 0, read),
-                    WebSocketMessageType.Binary, true, cancellationToken).ConfigureAwait(false);
-            }
-        }
-        catch (Exception thrownException)
-        {
-            logger.LogError(thrownException, $"{nameof(ReceiveTask)} method interrupted due to exception.");
-        }
-    }
-
-    private static async Task SendTask(
-        WebSocket webSocket, NetworkStream networkStream, TcpClient tcpClient,
-        int bufferSize, ILogger logger, CancellationToken cancellationToken)
-    {
-        try
-        {
-            var read = default(WebSocketReceiveResult);
-            var buffer = new byte[bufferSize];
-
-            try
-            {
-                while (true)
-                {
-                    read = await webSocket.ReceiveAsync(
-                        new ArraySegment<byte>(buffer),
-                        cancellationToken).ConfigureAwait(false);
-
-                    if (read.CloseStatus.HasValue)
-                        break;
-
-                    await networkStream.WriteAsync(buffer, 0, read.Count, cancellationToken).ConfigureAwait(false);
-                }
-            }
-            catch (Exception thrownException)
-            {
-                logger.LogError(thrownException, $"{nameof(SendTask)} method interrupted due to exception.");
-            }
-
-            var lastRead = read;
-            await networkStream.DisposeAsync().ConfigureAwait(false);
-            tcpClient.Close();
-
-            await webSocket.CloseAsync(
-                lastRead?.CloseStatus ?? default,
-                lastRead?.CloseStatusDescription ?? string.Empty,
-                cancellationToken).ConfigureAwait(false);
-        }
-        catch (OperationCanceledException)
-        {
-            
-        }
-        catch(ArgumentException ex)
-        {
-            if(ex.ParamName?.Equals("closeStatus", StringComparison.Ordinal) == true)
-            {
-
-            }
-        }
-        catch (Exception ex)
-        {
-            var type = ex.GetType();
-            logger.LogError(ex, $"{nameof(SendTask)} method interrupted due to exception.");
-        }
+        _bufferSizeInBytes = bufferSizeInBytes < 1024 ? RecommendedBufferSize : bufferSizeInBytes;
     }
 
     /// <summary>
@@ -132,24 +50,147 @@ public sealed class WebsockifyMiddleware
     /// <returns>A task representing the asynchronous operation.</returns>
     public async Task InvokeAsync(HttpContext context)
     {
-        var cancellationToken = context.RequestAborted;
-        var logger = context.RequestServices.GetRequiredService<ILogger<WebsockifyMiddleware>>();
-
-        if (context.WebSockets.IsWebSocketRequest)
+        if (!context.WebSockets.IsWebSocketRequest)
         {
-            var webSocket = await context.WebSockets.AcceptWebSocketAsync().ConfigureAwait(false);
-
-            using var tcpClient = new TcpClient();
-            await tcpClient.ConnectAsync(_hostname, _tcpPort, cancellationToken).ConfigureAwait(false);
-
-            var networkStream = tcpClient.GetStream();
-            var receiveTask = ReceiveTask(networkStream, webSocket, _bufferSizeInBytes, logger, cancellationToken);
-            var sendTask = SendTask(webSocket, networkStream, tcpClient, _bufferSizeInBytes, logger, cancellationToken);
-            await Task.WhenAll(receiveTask, sendTask).ConfigureAwait(false);
+            context.Response.StatusCode = StatusCodes.Status400BadRequest;
+            await _next(context);
+            return;
         }
-        else
-            context.Response.StatusCode = 400;
 
-        await _next(context);
+        var logger = context.RequestServices.GetRequiredService<ILogger<WebsockifyMiddleware>>();
+        // 使用链接的 CancellationTokenSource 来在任一方完成后取消所有操作
+        using var cts = CancellationTokenSource.CreateLinkedTokenSource(context.RequestAborted);
+
+        WebSocket? webSocket = null;
+        Socket? socket = null;
+
+        try
+        {
+            webSocket = await context.WebSockets.AcceptWebSocketAsync();
+
+            socket = new Socket(SocketType.Stream, ProtocolType.Tcp)
+            {
+                NoDelay = true, // 禁用 Nagle 算法以降低延迟
+                SendBufferSize = _bufferSizeInBytes,
+                ReceiveBufferSize = _bufferSizeInBytes
+            };
+
+            await socket.ConnectAsync(_hostname, _tcpPort, cts.Token);
+
+            // 启动双向数据传输任务
+            var receiveTask = PumpTcpToWebSocketAsync(socket, webSocket, _bufferSizeInBytes, cts.Token);
+            var sendTask = PumpWebSocketToTcpAsync(webSocket, socket, _bufferSizeInBytes, cts.Token);
+
+            // 等待任意一方完成（关闭或出错）
+            var completedTask = await Task.WhenAny(receiveTask, sendTask);
+
+            // 如果任务因异常失败，记录错误
+            if (completedTask.IsFaulted)
+            {
+                var ex = completedTask.Exception?.InnerException;
+                if (ex is not null and not OperationCanceledException)
+                {
+                    logger.LogError(ex, "数据传输过程中发生错误");
+                }
+            }
+
+            // 取消另一个正在运行的任务
+            cts.Cancel();
+
+            // 等待另一个任务优雅退出
+            try
+            {
+                await Task.WhenAll(receiveTask, sendTask);
+            }
+            catch (OperationCanceledException) { }
+            catch (Exception) { /* 忽略已处理或取消的异常 */ }
+        }
+        catch (OperationCanceledException)
+        {
+            // 正常取消
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "WebSocket 代理连接异常");
+        }
+        finally
+        {
+            socket?.Dispose();
+
+            if (webSocket != null)
+            {
+                try
+                {
+                    var state = webSocket.State;
+                    if (state == WebSocketState.Open || state == WebSocketState.CloseReceived)
+                    {
+                        // 尝试优雅关闭 WebSocket
+                        using var closeCts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+                        await webSocket.CloseAsync(
+                            webSocket.CloseStatus ?? WebSocketCloseStatus.NormalClosure,
+                            webSocket.CloseStatusDescription ?? "连接关闭",
+                            closeCts.Token);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    logger.LogDebug(ex, "关闭 WebSocket 时发生异常");
+                }
+            }
+        }
+    }
+
+    private static async Task PumpWebSocketToTcpAsync(WebSocket webSocket, Socket socket, int bufferSize, CancellationToken token)
+    {
+        var buffer = ArrayPool<byte>.Shared.Rent(bufferSize);
+        try
+        {
+            while (!token.IsCancellationRequested)
+            {
+                // 使用 ValueWebSocketReceiveResult 避免分配
+                var result = await webSocket.ReceiveAsync(new Memory<byte>(buffer), token);
+
+                if (result.MessageType == WebSocketMessageType.Close)
+                {
+                    break;
+                }
+
+                // 将数据发送到 TCP
+                var data = new ReadOnlyMemory<byte>(buffer, 0, result.Count);
+                while (data.Length > 0)
+                {
+                    var sent = await socket.SendAsync(data, SocketFlags.None, token);
+                    if (sent == 0) break;
+                    data = data.Slice(sent);
+                }
+            }
+        }
+        catch (OperationCanceledException) { /* 正常退出 */ }
+        finally
+        {
+            ArrayPool<byte>.Shared.Return(buffer);
+        }
+    }
+
+    private static async Task PumpTcpToWebSocketAsync(Socket socket, WebSocket webSocket, int bufferSize, CancellationToken token)
+    {
+        var buffer = ArrayPool<byte>.Shared.Rent(bufferSize);
+        try
+        {
+            while (!token.IsCancellationRequested)
+            {
+                // 直接使用 Socket 接收数据，避免 NetworkStream 开销
+                var bytesRead = await socket.ReceiveAsync(new Memory<byte>(buffer), SocketFlags.None, token);
+
+                if (bytesRead == 0) break; // TCP FIN
+
+                await webSocket.SendAsync(new ReadOnlyMemory<byte>(buffer, 0, bytesRead), WebSocketMessageType.Binary, endOfMessage: true, token);
+            }
+        }
+        catch (OperationCanceledException) { /* 正常退出 */ }
+        finally
+        {
+            ArrayPool<byte>.Shared.Return(buffer);
+        }
     }
 }
