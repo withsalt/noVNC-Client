@@ -1,7 +1,5 @@
-using System.Diagnostics;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Caching.Memory;
-using noVNCClient.Models;
 
 namespace noVNCClient.Controllers
 {
@@ -66,8 +64,6 @@ namespace noVNCClient.Controllers
             }
 
             var fileContent = System.IO.File.ReadAllText(filePath);
-
-            // 将内容存入缓存，设置10分钟过期
             var cacheOptions = new MemoryCacheEntryOptions
             {
                 AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(120),
