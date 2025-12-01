@@ -107,8 +107,20 @@ public sealed class WebsockifyMiddleware
                 lastRead?.CloseStatusDescription ?? string.Empty,
                 cancellationToken).ConfigureAwait(false);
         }
+        catch (OperationCanceledException)
+        {
+            
+        }
+        catch(ArgumentException ex)
+        {
+            if(ex.ParamName?.Equals("closeStatus", StringComparison.Ordinal) == true)
+            {
+
+            }
+        }
         catch (Exception ex)
         {
+            var type = ex.GetType();
             logger.LogError(ex, $"{nameof(SendTask)} method interrupted due to exception.");
         }
     }
