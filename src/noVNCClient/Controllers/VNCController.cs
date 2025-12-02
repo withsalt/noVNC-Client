@@ -1,8 +1,10 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Caching.Memory;
 
 namespace noVNCClient.Controllers
 {
+    [Authorize]
     public class VNCController : Controller
     {
         private readonly IWebHostEnvironment _env;
@@ -31,6 +33,7 @@ namespace noVNCClient.Controllers
             }
         }
 
+        
         [Route("Lite")]
         public IActionResult Lite()
         {
