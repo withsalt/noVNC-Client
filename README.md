@@ -10,7 +10,7 @@
 ### 如何使用
 
 1. **安装VNC服务端**  
-这里以TightVNC为例，安装过程不再赘述（建议以服务方式运行）  
+这里以TightVNC为例，安装过程不再赘述（建议以服务方式运行），下载地址：https://www.tightvnc.com/download.php  
 安装完成之后，按照下图勾选必要配置项目：
 
     ![TightVNC配置截图1](docs/images/screenshot_20251201143102.png)
@@ -21,8 +21,11 @@
 
 1. **下载vnc client**
     ```bash
-    git clone https://github.com/yourusername/noVNC-Client.git
-    cd noVNC-Client
+    # 非服务方式运行（直接打开exe）  
+    https://github.com/withsalt/noVNC-Client/releases/latest/download/noVNCClient_win_x64.zip
+
+    #服务方式运行（注册为windows服务）  
+    https://github.com/withsalt/noVNC-Client/releases/latest/download/noVNCClient_win_x64_with_service.zip
     ```
 
 2. **配置 VNC 服务器连接（一般不用做任何更改）**
@@ -31,20 +34,28 @@
 
     ```json
     {
-    "Websockify": {
+      "Websockify": {
         "Path": "/websockify",
         "Host": "127.0.0.1",
         "Port": 5900
+      },
+      "BasicAuth": {
+        "Enabled": true,
+        "Username": "admin",
+        "Password": "admin"
+      }
     }
-    }
+
     ```
 
     参数说明：
     - `Path`: WebSocket 代理的路径（默认即可）
     - `Host`: VNC 服务器的 IP 地址或主机名
     - `Port`: VNC 服务器的端口号（默认 5900）
+    - `BasicAuth`: 基础认证账号密码，以及可选关闭基础认证
 
 3. **运行应用**
+   **非服务方式运行**  
 
     使用Https
     ```bash
@@ -54,8 +65,16 @@
     ```bash
     ./noVNCClient.exe --urls="http://*:5909"
     ```
+    
+    **服务方式运行（注册为windows服务）**
+    ```bash
+    # 安装
+    .\novnc-client-service.exe install
+    # 启动
+    .\novnc-client-service.exe start
+    ```
 
-4. **访问应用**
+5. **访问应用**
 
     打开浏览器访问：
     - 完整版界面: `https://<目标机器IP地址>:5909` 或 `http://<目标机器IP地址>:5909`
