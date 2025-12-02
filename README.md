@@ -46,16 +46,20 @@
 
 3. **运行应用**
 
+    使用Https
     ```bash
-    cd src/noVNCClient
-    dotnet run
+    ./noVNCClient.exe --Kestrel:Endpoints:Https:Certificate:Path="./novnc.pfx" --Kestrel:Endpoints:Https:Certificate:Password="" --Kestrel:Endpoints:Https:Url="https://*:5909" 
+    ```
+    使用http
+    ```bash
+    ./noVNCClient.exe --urls="http://*:5909"
     ```
 
 4. **访问应用**
 
     打开浏览器访问：
-    - 完整版界面: `https://localhost:5001/` 或 `https://localhost:5001/Index`
-    - 精简版界面: `https://localhost:5001/Lite`
+    - 完整版界面: `https://<目标机器IP地址>:5909` 或 `http://<目标机器IP地址>:5909`
+    - 精简版界面: `https://<目标机器IP地址>:5909/Lite`
 
 
 ## 📝 更新 noVNC 版本

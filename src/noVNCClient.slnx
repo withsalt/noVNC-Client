@@ -1,5 +1,6 @@
 <Solution>
   <Folder Name="/解决方案项/">
+    <File Path="../README.md" />
     <File Path="../update-novnc.ps1" />
   </Folder>
   <Project Path="noVNCClient/noVNCClient.csproj" />
