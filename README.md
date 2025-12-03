@@ -19,7 +19,7 @@
 
     ![TightVNC配置截图3](docs/images/screenshot_20251201143150.png)
 
-1. **下载vnc client**
+1. **下载vnc client**  
     ```bash
     # 非服务方式运行（直接打开exe）  
     https://github.com/withsalt/noVNC-Client/releases/latest/download/noVNCClient_win_x64.zip
@@ -28,9 +28,9 @@
     https://github.com/withsalt/noVNC-Client/releases/latest/download/noVNCClient_win_x64_with_service.zip
     ```
 
-2. **配置 VNC 服务器连接**
+2. **配置 VNC 服务器连接**  
 
-    编辑 `src/noVNCClient/appsettings.json` 文件：
+    编辑 `src/noVNCClient/appsettings.json` 文件：  
 
     ```json
     {
@@ -48,25 +48,25 @@
 
     ```
 
-    参数说明：
-    - `Path`: WebSocket 代理的路径（默认即可）
-    - `Host`: VNC 服务器的 IP 地址或主机名
-    - `Port`: VNC 服务器的端口号（默认 5900）
-    - `BasicAuth`: 基础认证账号密码，默认账号和密码为admin/admin，可选关闭基础认证
+    参数说明：  
+    - `Path`: WebSocket 代理的路径（默认即可）  
+    - `Host`: VNC 服务器的 IP 地址或主机名  
+    - `Port`: VNC 服务器的端口号（默认 5900）  
+    - `BasicAuth`: 基础认证账号密码，默认账号和密码为admin/admin，可选关闭基础认证  
 
-3. **运行应用**
+3. **运行应用**  
    **非服务方式运行**  
 
-    使用Https
+    使用Https  
     ```bash
     ./noVNCClient.exe --Kestrel:Endpoints:Https:Certificate:Path="./novnc.pfx" --Kestrel:Endpoints:Https:Certificate:Password="" --Kestrel:Endpoints:Https:Url="https://*:5909" 
     ```
-    使用http
+    使用http  
     ```bash
     ./noVNCClient.exe --urls="http://*:5909"
     ```
     
-    **服务方式运行（注册为windows服务）**
+    **服务方式运行（注册为windows服务）**  
     ```bash
     # 安装
     .\novnc-client-service.exe install
@@ -74,9 +74,9 @@
     .\novnc-client-service.exe start
     ```
 
-5. **访问应用**
+5. **访问应用**  
 
-    打开浏览器访问：
+    打开浏览器访问：  
     - 完整版界面: `https://<目标机器IP地址>:5909` 或 `http://<目标机器IP地址>:5909`
     - 精简版界面: `https://<目标机器IP地址>:5909/Lite`
 
