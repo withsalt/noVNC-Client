@@ -28,7 +28,7 @@
     https://github.com/withsalt/noVNC-Client/releases/latest/download/noVNCClient_win_x64_with_service.zip
     ```
 
-2. **配置 VNC 服务器连接（一般不用做任何更改）**
+2. **配置 VNC 服务器连接**
 
     编辑 `src/noVNCClient/appsettings.json` 文件：
 
