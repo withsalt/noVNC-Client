@@ -1,3 +1,4 @@
+using System.Text.RegularExpressions;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Caching.Memory;
@@ -33,7 +34,7 @@ namespace noVNCClient.Controllers
             }
         }
 
-        
+
         [Route("Lite")]
         public IActionResult Lite()
         {
@@ -67,6 +68,13 @@ namespace noVNCClient.Controllers
             }
 
             var fileContent = System.IO.File.ReadAllText(filePath);
+            if (string.IsNullOrWhiteSpace(fileContent))
+            {
+                throw new Exception("HTML file is empty");
+            }
+
+            fileContent = Regex.Replace(fileContent, "<html lang=\"[^\"]*\"", "<html lang=\"zh-CHS\"");
+
             var cacheOptions = new MemoryCacheEntryOptions
             {
                 AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(120),
