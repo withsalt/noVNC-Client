@@ -23,7 +23,8 @@ namespace noVNCClient.Authentication
 
         protected override async Task<AuthenticateResult> HandleAuthenticateAsync()
         {
-            var enabled = _configuration.GetValue<bool>("BasicAuth:Enabled", true);
+            var enabledValue = _configuration["BasicAuth:Enabled"];
+            var enabled = !bool.TryParse(enabledValue, out var parsedEnabled) || parsedEnabled;
             if (!enabled)
             {
                 // 如果 BasicAuth 被禁用，直接返回成功，模拟一个已认证的用户
@@ -87,7 +88,8 @@ namespace noVNCClient.Authentication
 
         protected override async Task HandleChallengeAsync(AuthenticationProperties properties)
         {
-            var enabled = _configuration.GetValue<bool>("BasicAuth:Enabled", true);
+            var enabledValue = _configuration["BasicAuth:Enabled"];
+            var enabled = !bool.TryParse(enabledValue, out var parsedEnabled) || parsedEnabled;
             if (!enabled)
             {
                 // 如果禁用，不应该触发 Challenge，但以防万一
