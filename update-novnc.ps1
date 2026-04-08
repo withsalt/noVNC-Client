@@ -95,7 +95,7 @@ function Update-NoVNC {
         # ============================================
         # 步骤 1: 克隆noVNC仓库
         # ============================================
-        Write-ColorOutput "[步骤 1/3] 从GitHub拉取最新代码..." "Info"
+        Write-ColorOutput "[步骤 1/4] 从GitHub拉取最新代码..." "Info"
         
         # 如果临时目录已存在，先删除
         if (Test-Path $tempPath) {
@@ -126,7 +126,7 @@ function Update-NoVNC {
         # ============================================
         # 步骤 2: 复制文件到wwwroot
         # ============================================
-        Write-ColorOutput "[步骤 2/3] 复制文件到wwwroot目录..." "Info"
+        Write-ColorOutput "[步骤 2/4] 复制文件到wwwroot目录..." "Info"
         
         # 检查wwwroot目录
         if (-not (Test-Path $wwwrootPath)) {
@@ -167,9 +167,32 @@ function Update-NoVNC {
         Write-ColorOutput "✓ 已复制 $copiedFiles 个文件`n" "Success"
 
         # ============================================
+        # 步骤 3: 修改默认缩放模式为本地缩放
+        # ============================================
+        Write-ColorOutput "[步骤 3/4] 修改默认缩放模式为本地缩放..." "Info"
+
+        $uiJsPath = Join-Path $wwwrootPath "app\ui.js"
+        if (Test-Path $uiJsPath) {
+            $uiContent = Get-Content -Path $uiJsPath -Raw -Encoding UTF8
+            $originalContent = $uiContent
+            $uiContent = $uiContent.Replace("UI.initSetting('resize', 'off')", "UI.initSetting('resize', 'scale')")
+
+            if ($uiContent -ne $originalContent) {
+                Set-Content -Path $uiJsPath -Value $uiContent -NoNewline -Encoding UTF8
+                Write-ColorOutput "✓ 已将默认缩放模式修改为本地缩放（Local Scaling）`n" "Success"
+            }
+            else {
+                Write-ColorOutput "⚠ 未找到需要替换的缩放设置，可能noVNC版本已变更`n" "Warning"
+            }
+        }
+        else {
+            Write-ColorOutput "⚠ 未找到 app/ui.js 文件，跳过缩放模式修改`n" "Warning"
+        }
+
+        # ============================================
         # 步骤 4: 清理临时文件
         # ============================================
-        Write-ColorOutput "[步骤 3/3] 清理临时文件..." "Info"
+        Write-ColorOutput "[步骤 4/4] 清理临时文件..." "Info"
         
         if (Test-Path $tempPath) {
             Remove-Item -Path $tempPath -Recurse -Force
